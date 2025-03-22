@@ -1,0 +1,163 @@
+"use client"
+
+import { useRef, useState, useEffect } from "react";
+
+const Canvas = () => {
+    const canvasRef = useRef(null);
+    const [shapes, setShapes] = useState([]);
+    const [selectedShapeIndex, setSelectedShapeIndex] = useState(null);
+    const [dragging, setDragging] = useState(false);
+    const [resizing, setResizing] = useState(false);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [resizeHandleOffset, setResizeHandleOffset] = useState(null);
+    const [resizingCorner, setResizingCorner] = useState(null);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        shapes.forEach((shape, index) => {
+            ctx.fillStyle = shape.color;
+            ctx.beginPath();
+            if (shape.type === "rectangle" || shape.type === "square") {
+                ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+            } else if (shape.type === "circle") {
+                ctx.arc(
+                    shape.x + shape.width / 2,
+                    shape.y + shape.height / 2,
+                    shape.width / 2,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.fill();
+            } else if (shape.type === "oval") {
+                ctx.ellipse(
+                    shape.x + shape.width / 2,
+                    shape.y + shape.height / 2,
+                    shape.width / 2,
+                    shape.height / 2,
+                    0,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.fill();
+            } else if (shape.type === "line") {
+                ctx.moveTo(shape.x, shape.y);
+                ctx.lineTo(shape.x + shape.width, shape.y + shape.height);
+                ctx.stroke();
+            }
+            if (selectedShapeIndex === index) {
+                ctx.strokeStyle = "red";
+                ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+            }
+        });
+    }, [shapes, selectedShapeIndex]);
+
+    const addShape = (type) => {
+        const newShape = {
+            type,
+            x: 50,
+            y: 50,
+            width: type === "square" ? 50 : 100,
+            height: type === "square" ? 50 : 60,
+            color: "blue",
+        };
+        setShapes([...shapes, newShape]);
+    };
+
+    const onMouseDown = (e) => {
+        const { offsetX, offsetY } = e.nativeEvent;
+        let clickedIndex = -1;
+        let isResizing = false;
+        let corner = null;
+
+        shapes.forEach((shape, index) => {
+            if (
+                offsetX >= shape.x &&
+                offsetX <= shape.x + shape.width &&
+                offsetY >= shape.y &&
+                offsetY <= shape.y + shape.height
+            ) {
+                clickedIndex = index;
+            }
+            // Check for resizing handles
+            if (
+                offsetX >= shape.x + shape.width - 10 &&
+                offsetX <= shape.x + shape.width &&
+                offsetY >= shape.y + shape.height - 10 &&
+                offsetY <= shape.y + shape.height
+            ) {
+                isResizing = true;
+                corner = "bottom-right";
+                clickedIndex = index;
+                setResizeHandleOffset({ x: offsetX - shape.x, y: offsetY - shape.y });
+            }
+        });
+        if (clickedIndex !== -1) {
+            setSelectedShapeIndex(clickedIndex);
+            if (isResizing) {
+                setResizing(true);
+                setResizingCorner(corner);
+            } else {
+                setDragging(true);
+                setOffset({
+                    x: offsetX - shapes[clickedIndex].x,
+                    y: offsetY - shapes[clickedIndex].y,
+                });
+            }
+        } else {
+            setSelectedShapeIndex(null);
+        }
+    };
+
+    const onMouseMove = (e) => {
+        if ((dragging || resizing) && selectedShapeIndex !== null) {
+            const { offsetX, offsetY } = e.nativeEvent;
+            setShapes((prevShapes) => {
+                const updatedShapes = [...prevShapes];
+                if (resizing && resizingCorner === "bottom-right") {
+                    updatedShapes[selectedShapeIndex] = {
+                        ...updatedShapes[selectedShapeIndex],
+                        width: Math.max(10, offsetX - updatedShapes[selectedShapeIndex].x),
+                        height: Math.max(10, offsetY - updatedShapes[selectedShapeIndex].y),
+                    };
+                } else if (dragging) {
+                    updatedShapes[selectedShapeIndex] = {
+                        ...updatedShapes[selectedShapeIndex],
+                        x: offsetX - offset.x,
+                        y: offsetY - offset.y,
+                    };
+                }
+                return updatedShapes;
+            });
+        }
+    };
+
+    const onMouseUp = () => {
+        setDragging(false);
+        setResizing(false);
+        setResizingCorner(null);
+    };
+
+    return (
+        <div>
+            <button onClick={() => addShape("rectangle")}>Rectangle</button>
+            <button onClick={() => addShape("square")}>Square</button>
+            <button onClick={() => addShape("circle")}>Circle</button>
+            <button onClick={() => addShape("oval")}>Oval</button>
+            <button onClick={() => addShape("line")}>Line</button>
+            <canvas
+                ref={canvasRef}
+                width={600}
+                height={400}
+                style={{ border: "1px solid black" }}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+            />
+        </div>
+    );
+};
+
+export default Canvas;
