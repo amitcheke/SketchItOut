@@ -1,4 +1,6 @@
+"use client"
 import React, { useState, useCallback } from 'react';
+
 import { Handle, Position, useReactFlow } from 'reactflow';
 import ResizeHandle from '../../designer/ResizeHandle';
 import ArrowNode from "@/components/nodes/shapes/ArrowNode";

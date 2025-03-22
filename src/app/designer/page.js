@@ -125,7 +125,7 @@ export default function SystemDesignApp() {
             }
 
             setNodeName('');
-            // Keep the selected shape active for multiple additions
+            setSelectedShape(null)
         },
         [nodeName, reactFlowInstance, selectedShape, setNodes]
     );
@@ -279,48 +279,10 @@ export default function SystemDesignApp() {
                 <Controls />
                 <MiniMap />
                 <Background />
-
-
-                <Panel position="top-left" className="p-4 bg-white rounded shadow-md flex flex-col gap-4">
-                    <h3 className="text-lg font-bold">System Design Tool</h3>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm">Component Name</label>
-                        <input
-                            type="text"
-                            value={nodeName}
-                            onChange={(e) => setNodeName(e.target.value)}
-                            placeholder="Component name"
-                            className="p-2 border rounded"
-                        />
-                    </div>
-
-                    <div className="flex gap-2">
-                        <button
-                            onClick={saveDiagram}
-                            className="p-2 bg-green-500 text-white rounded flex-1"
-                        >
-                            Save
-                        </button>
-                        <button
-                            onClick={loadDiagram}
-                            className="p-2 bg-orange-500 text-white rounded flex-1"
-                        >
-                            Load
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={exportAsImage}
-                        className="p-2 bg-blue-500 text-white rounded"
-                    >
-                        Export as Image
-                    </button>
-                </Panel>
-                <Panel position="top-center" className="mt-2">
+                <Panel position="top-center">
                     <VerticalShapeToolbar onShapeSelect={onShapeSelect} />
                     {nodeToEdit && (
-                        <Panel position="top-center" className="p-4 bg-white rounded shadow-md z-50">
+                        <Panel  className="p-4 bg-white rounded shadow-md z-50">
                             <div className="flex flex-col gap-2">
                                 <h4>{isNewNode ? "Set Node Label" : "Edit Node Label"}</h4>
                                 <div className="flex gap-2">
@@ -349,6 +311,17 @@ export default function SystemDesignApp() {
                         </Panel>
                     )}
                 </Panel>
+
+                {/*<Panel position="top-left" className="p-4 bg-white rounded shadow-md flex flex-col gap-4">*/}
+                {/*    <h3 className="text-lg font-bold">System Design Tool</h3>*/}
+                {/*    <button*/}
+                {/*        onClick={exportAsImage}*/}
+                {/*        className="p-2 bg-blue-500 text-white rounded"*/}
+                {/*    >*/}
+                {/*        Export as Image*/}
+                {/*    </button>*/}
+                {/*</Panel>*/}
+
                 {selectedShape && (
                     <Panel position="bottom-center" className="p-2 mb-2 bg-white rounded shadow-md">
                         <div className="flex items-center gap-2">
