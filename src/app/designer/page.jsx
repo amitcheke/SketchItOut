@@ -210,45 +210,54 @@ const Canvas = () => {
             const shape = shapes[i];
 
             if (shape.type === "line") {
-                // Special hit detection for lines
                 const tolerance = 5; // px
 
-                // Check if close to the line
-                const A = { x: shape.startX, y: shape.startY };
-                const B = { x: shape.endX, y: shape.endY };
-                const C = { x: offsetX, y: offsetY };
+                const startDist = Math.sqrt((offsetX - shape.startX) ** 2 + (offsetY - shape.startY) ** 2);
+                const endDist = Math.sqrt((offsetX - shape.endX) ** 2 + (offsetY - shape.endY) ** 2);
 
-                // Calculate distance from point to line segment
-                const distAB = Math.sqrt((B.x - A.x) ** 2 + (B.y - A.y) ** 2);
-
-                if (distAB === 0) {
-                    // Special case: line of zero length
-                    const dist = Math.sqrt((C.x - A.x) ** 2 + (C.y - A.y) ** 2);
-                    if (dist <= tolerance) {
-                        clickedIndex = i;
-                        break;
-                    }
-                } else {
-                    const t = Math.max(0, Math.min(1, ((C.x - A.x) * (B.x - A.x) + (C.y - A.y) * (B.y - A.y)) / (distAB * distAB)));
-                    const projection = {
-                        x: A.x + t * (B.x - A.x),
-                        y: A.y + t * (B.y - A.y)
-                    };
-                    const dist = Math.sqrt((C.x - projection.x) ** 2 + (C.y - projection.y) ** 2);
-
-                    if (dist <= tolerance) {
-                        clickedIndex = i;
-                        break;
-                    }
-                }
-
-                // Also check endpoints (for moving control points)
-                const startDist = Math.sqrt((C.x - A.x) ** 2 + (C.y - A.y) ** 2);
-                const endDist = Math.sqrt((C.x - B.x) ** 2 + (C.y - B.y) ** 2);
-
-                if (startDist <= 10 || endDist <= 10) {
+                if (startDist <= 10) {
+                    // We're near the start point
+                    setResizing(true);
+                    setResizingCorner("start");
                     clickedIndex = i;
                     break;
+                } else if (endDist <= 10) {
+                    // We're near the end point
+                    setResizing(true);
+                    setResizingCorner("end");
+                    clickedIndex = i;
+                    break;
+                } else {
+                    // Check if close to the line segment
+                    const A = { x: shape.startX, y: shape.startY };
+                    const B = { x: shape.endX, y: shape.endY };
+                    const C = { x: offsetX, y: offsetY };
+
+                    // Calculate distance from point to line segment
+                    const distAB = Math.sqrt((B.x - A.x) ** 2 + (B.y - A.y) ** 2);
+
+                    if (distAB === 0) {
+                        // Special case: line of zero length
+                        const dist = Math.sqrt((C.x - A.x) ** 2 + (C.y - A.y) ** 2);
+                        if (dist <= tolerance) {
+                            setDragging(true);
+                            clickedIndex = i;
+                            break;
+                        }
+                    } else {
+                        const t = Math.max(0, Math.min(1, ((C.x - A.x) * (B.x - A.x) + (C.y - A.y) * (B.y - A.y)) / (distAB * distAB)));
+                        const projection = {
+                            x: A.x + t * (B.x - A.x),
+                            y: A.y + t * (B.y - A.y)
+                        };
+                        const dist = Math.sqrt((C.x - projection.x) ** 2 + (C.y - projection.y) ** 2);
+
+                        if (dist <= tolerance) {
+                            setDragging(true);
+                            clickedIndex = i;
+                            break;
+                        }
+                    }
                 }
             } else if (shape.type === "circle") {
                 // Improved hit detection for circles
@@ -436,8 +445,23 @@ const Canvas = () => {
                 const selectedShape = updatedShapes[selectedShapeIndex];
 
                 if (selectedShape.type === "line") {
-                    // Handle line dragging
-                    if (dragging) {
+                    if (resizing) {
+                        // Handle line endpoint resizing
+                        if (resizingCorner === "start") {
+                            updatedShapes[selectedShapeIndex] = {
+                                ...selectedShape,
+                                startX: offsetX,
+                                startY: offsetY
+                            };
+                        } else if (resizingCorner === "end") {
+                            updatedShapes[selectedShapeIndex] = {
+                                ...selectedShape,
+                                endX: offsetX,
+                                endY: offsetY
+                            };
+                        }
+                    } else if (dragging) {
+                        // Handle line dragging
                         const deltaX = offsetX - offset.x - selectedShape.startX;
                         const deltaY = offsetY - offset.y - selectedShape.startY;
 
