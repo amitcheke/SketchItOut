@@ -518,9 +518,15 @@ const Canvas = () => {
     };
 
     const changeShapeColor = (color) => {
+       console.log("Change color")
         if (selectedShapeIndex !== null) {
-            setShapes(shapes.map((shape, index) =>
-                index === selectedShapeIndex ? { ...shape, color } : shape
+            setShapes(shapes.map((shape, index) =>{
+                    if(index === selectedShapeIndex) {
+                        console.log("--------------->>>", shape)
+                        return { ...shape, color }
+                    }  else { return shape}
+            }
+
             ));
         } else {
             setCurrentColor(color);
@@ -608,16 +614,20 @@ const Canvas = () => {
             <div className="mb-4">
                 <p className="text-sm mb-1">Colors:</p>
                 <div className="flex gap-2">
-                    {colors.map((color) => (
-                        <div
-                            key={color}
-                            className={`w-6 h-6 rounded-full cursor-pointer ${
-                                color === currentColor ? 'ring-2 ring-offset-2 ring-gray-400' : ''
-                            }`}
-                            style={{ backgroundColor: color }}
-                            onClick={() => changeShapeColor(color)}
-                        />
-                    ))}
+                    {colors.map((color) => {
+                        console.log("Color:", color)
+                        return (
+                            // <div
+                            //     key={color}
+                            //     className={`w-6 h-6 rounded-full cursor-pointer`}
+                            //     style={{ backgroundColor: color }}
+                            //     onClick={() => changeShapeColor(color)}
+                            // />
+                            <div key={color} className="w-16 h-16 block"
+                                 style={{backgroundColor:color}} onClick={() => changeShapeColor(color)} >{color}</div>
+
+                        )
+                    })}
                 </div>
             </div>
 
