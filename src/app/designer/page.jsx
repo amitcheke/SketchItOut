@@ -13,6 +13,8 @@ const Canvas = () => {
     const [currentColor, setCurrentColor] = useState("#3b82f6"); // Default blue color
     const [activeShapeType, setActiveShapeType] = useState(null);
     const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
+    const [fillShape, setFillShape] = useState(true); // New state for fill/outline option
+    const [lineWidth, setLineWidth] = useState(2); // Line width state
 
     // Available colors
     const colors = [
@@ -28,6 +30,9 @@ const Canvas = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
+        // Set up high DPI canvas for crisp rendering
+        setupHiDPICanvas(canvas);
+
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -37,16 +42,39 @@ const Canvas = () => {
         });
     }, [shapes, selectedShapeIndex]);
 
+    // Function to set up high DPI canvas
+    const setupHiDPICanvas = (canvas) => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+
+        // Set the canvas size in memory (scaled up)
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+
+        // Scale down the rendering for correct display size
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        // Set the CSS display size
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+    };
+
     const drawShape = (ctx, shape, isSelected) => {
-        ctx.fillStyle = shape.color;
         ctx.strokeStyle = shape.color;
-        ctx.lineWidth = 2;
+        ctx.fillStyle = shape.color;
+        ctx.lineWidth = shape.lineWidth || 2;
 
         if (shape.type === "rectangle" || shape.type === "square") {
             ctx.beginPath();
-            ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
 
-            // Draw selection rectangle for rectangle and square
+            if (shape.fill) {
+                ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+            } else {
+                ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+            }
+
+            // Draw selection rectangle
             if (isSelected) {
                 ctx.strokeStyle = "#ff0000";
                 ctx.lineWidth = 2;
@@ -63,15 +91,19 @@ const Canvas = () => {
             }
         } else if (shape.type === "circle") {
             ctx.beginPath();
-            // Fix: Use center coordinates and radius properly
             const centerX = shape.x + shape.width / 2;
             const centerY = shape.y + shape.height / 2;
-            const radius = shape.width / 2; // For a circle, width and height should be the same
+            const radius = shape.width / 2;
 
             ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.fill();
 
-            // Draw selection rectangle for circle
+            if (shape.fill) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
+
+            // Draw selection rectangle
             if (isSelected) {
                 ctx.strokeStyle = "#ff0000";
                 ctx.lineWidth = 2;
@@ -97,9 +129,14 @@ const Canvas = () => {
                 0,
                 2 * Math.PI
             );
-            ctx.fill();
 
-            // Draw selection rectangle for oval
+            if (shape.fill) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
+
+            // Draw selection rectangle
             if (isSelected) {
                 ctx.strokeStyle = "#ff0000";
                 ctx.lineWidth = 2;
@@ -156,7 +193,9 @@ const Canvas = () => {
     };
 
     const onMouseDown = (e) => {
-        const { offsetX, offsetY } = e.nativeEvent;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
 
         // If we're in shape creation mode
         if (activeShapeType) {
@@ -288,7 +327,10 @@ const Canvas = () => {
     };
 
     const onMouseMove = (e) => {
-        const { offsetX, offsetY } = e.nativeEvent;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -309,27 +351,44 @@ const Canvas = () => {
             // Draw preview shape
             ctx.fillStyle = currentColor;
             ctx.strokeStyle = currentColor;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = lineWidth;
 
             if (activeShapeType === "rectangle") {
                 ctx.beginPath();
-                ctx.fillRect(
-                    startPoint.x,
-                    startPoint.y,
-                    width,
-                    height
-                );
+                if (fillShape) {
+                    ctx.fillRect(
+                        startPoint.x,
+                        startPoint.y,
+                        width,
+                        height
+                    );
+                } else {
+                    ctx.strokeRect(
+                        startPoint.x,
+                        startPoint.y,
+                        width,
+                        height
+                    );
+                }
             } else if (activeShapeType === "square") {
                 const size = Math.max(Math.abs(width), Math.abs(height)) * Math.sign(width);
                 ctx.beginPath();
-                ctx.fillRect(
-                    startPoint.x,
-                    startPoint.y,
-                    size,
-                    size
-                );
+                if (fillShape) {
+                    ctx.fillRect(
+                        startPoint.x,
+                        startPoint.y,
+                        size,
+                        size
+                    );
+                } else {
+                    ctx.strokeRect(
+                        startPoint.x,
+                        startPoint.y,
+                        size,
+                        size
+                    );
+                }
             } else if (activeShapeType === "circle") {
-                // Fix: Improved circle preview
                 const radius = Math.sqrt(width * width + height * height);
                 ctx.beginPath();
                 ctx.arc(
@@ -339,7 +398,11 @@ const Canvas = () => {
                     0,
                     2 * Math.PI
                 );
-                ctx.fill();
+                if (fillShape) {
+                    ctx.fill();
+                } else {
+                    ctx.stroke();
+                }
             } else if (activeShapeType === "oval") {
                 ctx.beginPath();
                 ctx.ellipse(
@@ -351,7 +414,11 @@ const Canvas = () => {
                     0,
                     2 * Math.PI
                 );
-                ctx.fill();
+                if (fillShape) {
+                    ctx.fill();
+                } else {
+                    ctx.stroke();
+                }
             } else if (activeShapeType === "line") {
                 ctx.beginPath();
                 ctx.moveTo(startPoint.x, startPoint.y);
@@ -443,7 +510,9 @@ const Canvas = () => {
     };
 
     const onMouseUp = (e) => {
-        const { offsetX, offsetY } = e.nativeEvent;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
 
         // Finalize drawing if in shape mode
         if (activeShapeType && startPoint.x !== 0) {
@@ -455,7 +524,8 @@ const Canvas = () => {
                     startY: startPoint.y,
                     endX: offsetX,
                     endY: offsetY,
-                    color: currentColor
+                    color: currentColor,
+                    lineWidth: lineWidth
                 };
 
                 setShapes([...shapes, newLine]);
@@ -470,7 +540,9 @@ const Canvas = () => {
                     x: startPoint.x,
                     y: startPoint.y,
                     width: width,
-                    height: height
+                    height: height,
+                    fill: fillShape,
+                    lineWidth: lineWidth
                 };
 
                 // Special handling for different shapes
@@ -479,7 +551,7 @@ const Canvas = () => {
                     newShape.width = size;
                     newShape.height = size;
                 } else if (activeShapeType === "circle") {
-                    // Fix: Proper circle creation
+                    // Proper circle creation
                     const radius = Math.sqrt(width * width + height * height);
                     newShape = {
                         ...newShape,
@@ -518,18 +590,36 @@ const Canvas = () => {
     };
 
     const changeShapeColor = (color) => {
-       console.log("Change color")
         if (selectedShapeIndex !== null) {
-            setShapes(shapes.map((shape, index) =>{
-                    if(index === selectedShapeIndex) {
-                        console.log("--------------->>>", shape)
-                        return { ...shape, color }
-                    }  else { return shape}
-            }
-
+            setShapes(shapes.map((shape, index) =>
+                index === selectedShapeIndex ? { ...shape, color } : shape
             ));
         } else {
             setCurrentColor(color);
+        }
+    };
+
+    // Toggle fill/outline mode
+    const toggleFillMode = () => {
+        if (selectedShapeIndex !== null && shapes[selectedShapeIndex].type !== "line") {
+            // Toggle fill property of selected shape
+            setShapes(shapes.map((shape, index) =>
+                index === selectedShapeIndex ? { ...shape, fill: !shape.fill } : shape
+            ));
+        } else {
+            // Toggle global fill mode for new shapes
+            setFillShape(!fillShape);
+        }
+    };
+
+    // Update line width
+    const updateLineWidth = (width) => {
+        if (selectedShapeIndex !== null) {
+            setShapes(shapes.map((shape, index) =>
+                index === selectedShapeIndex ? { ...shape, lineWidth: width } : shape
+            ));
+        } else {
+            setLineWidth(width);
         }
     };
 
@@ -555,104 +645,169 @@ const Canvas = () => {
         }
     };
 
+    // Helper function to determine button style
+    const getButtonStyle = (isActive) => {
+        return isActive
+            ? "px-3 py-2 bg-indigo-700 text-white rounded-md shadow hover:bg-indigo-800 transition-colors"
+            : "px-3 py-2 bg-indigo-500 text-white rounded-md shadow hover:bg-indigo-600 transition-colors";
+    };
+
+    // Clear canvas
+    const clearCanvas = () => {
+        setShapes([]);
+        setSelectedShapeIndex(null);
+    };
+
     return (
-        <div className="p-4">
-            <div className="mb-4 flex flex-wrap gap-2">
-                <button
-                    className={`px-3 py-1 ${activeShapeType === "rectangle" ? "bg-blue-700" : "bg-blue-500"} text-white rounded hover:bg-blue-600`}
-                    onClick={() => activateShapeMode("rectangle")}
-                >
-                    Rectangle
-                </button>
-                <button
-                    className={`px-3 py-1 ${activeShapeType === "square" ? "bg-blue-700" : "bg-blue-500"} text-white rounded hover:bg-blue-600`}
-                    onClick={() => activateShapeMode("square")}
-                >
-                    Square
-                </button>
-                <button
-                    className={`px-3 py-1 ${activeShapeType === "circle" ? "bg-blue-700" : "bg-blue-500"} text-white rounded hover:bg-blue-600`}
-                    onClick={() => activateShapeMode("circle")}
-                >
-                    Circle
-                </button>
-                <button
-                    className={`px-3 py-1 ${activeShapeType === "oval" ? "bg-blue-700" : "bg-blue-500"} text-white rounded hover:bg-blue-600`}
-                    onClick={() => activateShapeMode("oval")}
-                >
-                    Oval
-                </button>
-                <button
-                    className={`px-3 py-1 ${activeShapeType === "line" ? "bg-blue-700" : "bg-blue-500"} text-white rounded hover:bg-blue-600`}
-                    onClick={() => activateShapeMode("line")}
-                >
-                    Line
-                </button>
-                <button
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                    onClick={deleteSelectedShape}
-                    disabled={selectedShapeIndex === null}
-                >
-                    Delete
-                </button>
-                <button
-                    className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                    onClick={bringToFront}
-                    disabled={selectedShapeIndex === null}
-                >
-                    Bring to Front
-                </button>
-                <button
-                    className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                    onClick={sendToBack}
-                    disabled={selectedShapeIndex === null}
-                >
-                    Send to Back
-                </button>
-            </div>
+        <div className="p-6 bg-white rounded-lg shadow-lg max-w-6xl mx-auto">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Vector Drawing Tool</h2>
 
-            <div className="mb-4">
-                <p className="text-sm mb-1">Colors:</p>
-                <div className="flex gap-2">
-                    {colors.map((color) => {
-                        console.log("Color:", color)
-                        return (
-                            // <div
-                            //     key={color}
-                            //     className={`w-6 h-6 rounded-full cursor-pointer`}
-                            //     style={{ backgroundColor: color }}
-                            //     onClick={() => changeShapeColor(color)}
-                            // />
-                            <div key={color} className="w-16 h-16 block"
-                                 style={{backgroundColor:color}} onClick={() => changeShapeColor(color)} >{color}</div>
+            {/* Toolbar */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg shadow-sm">
+                <div className="flex flex-wrap gap-2 mb-4">
+                    <button
+                        className={getButtonStyle(activeShapeType === "rectangle")}
+                        onClick={() => activateShapeMode("rectangle")}
+                        title="Rectangle Tool"
+                    >
+                        Rectangle
+                    </button>
+                    <button
+                        className={getButtonStyle(activeShapeType === "square")}
+                        onClick={() => activateShapeMode("square")}
+                        title="Square Tool"
+                    >
+                        Square
+                    </button>
+                    <button
+                        className={getButtonStyle(activeShapeType === "circle")}
+                        onClick={() => activateShapeMode("circle")}
+                        title="Circle Tool"
+                    >
+                        Circle
+                    </button>
+                    <button
+                        className={getButtonStyle(activeShapeType === "oval")}
+                        onClick={() => activateShapeMode("oval")}
+                        title="Oval Tool"
+                    >
+                        Oval
+                    </button>
+                    <button
+                        className={getButtonStyle(activeShapeType === "line")}
+                        onClick={() => activateShapeMode("line")}
+                        title="Line Tool"
+                    >
+                        Line
+                    </button>
 
-                        )
-                    })}
+                    <div className="h-8 w-px bg-gray-300 mx-1"></div>
+
+                    <button
+                        className={`px-3 py-2 ${fillShape ? 'bg-green-600' : 'bg-gray-500'} text-white rounded-md shadow hover:opacity-90 transition-opacity`}
+                        onClick={toggleFillMode}
+                        title={fillShape ? "Switch to Outline Mode" : "Switch to Fill Mode"}
+                    >
+                        {fillShape ? "Filled" : "Outline"}
+                    </button>
+
+                    <select
+                        className="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={lineWidth}
+                        onChange={(e) => updateLineWidth(parseInt(e.target.value))}
+                        title="Line Thickness"
+                    >
+                        <option value="1">Thin</option>
+                        <option value="2">Medium</option>
+                        <option value="4">Thick</option>
+                        <option value="6">Very Thick</option>
+                    </select>
+
+                    <div className="h-8 w-px bg-gray-300 mx-1"></div>
+
+                    <button
+                        className="px-3 py-2 bg-red-500 text-white rounded-md shadow hover:bg-red-600 transition-colors"
+                        onClick={deleteSelectedShape}
+                        disabled={selectedShapeIndex === null}
+                        title="Delete Selected Shape"
+                    >
+                        Delete
+                    </button>
+                    <button
+                        className="px-3 py-2 bg-gray-600 text-white rounded-md shadow hover:bg-gray-700 transition-colors"
+                        onClick={bringToFront}
+                        disabled={selectedShapeIndex === null}
+                        title="Bring to Front"
+                    >
+                        Bring to Front
+                    </button>
+                    <button
+                        className="px-3 py-2 bg-gray-600 text-white rounded-md shadow hover:bg-gray-700 transition-colors"
+                        onClick={sendToBack}
+                        disabled={selectedShapeIndex === null}
+                        title="Send to Back"
+                    >
+                        Send to Back
+                    </button>
+                    <button
+                        className="px-3 py-2 bg-gray-800 text-white rounded-md shadow hover:bg-gray-900 transition-colors ml-auto"
+                        onClick={clearCanvas}
+                        title="Clear Canvas"
+                    >
+                        Clear All
+                    </button>
+                </div>
+
+                {/* Color Palette */}
+                <div className="mt-4">
+                    <p className="text-sm text-gray-700 mb-2 font-medium">Colors:</p>
+                    <div className="flex gap-3">
+                        {colors.map((color) => (
+                            <div
+                                key={color}
+                                className={`w-8 h-8 rounded-full cursor-pointer transition-transform hover:scale-110 ${color === currentColor ? 'ring-2 ring-offset-2 ring-gray-500' : ''}`}
+                                style={{ backgroundColor: color }}
+                                onClick={() => changeShapeColor(color)}
+                                title={color}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            <canvas
-                ref={canvasRef}
-                width={800}
-                height={600}
-                className="border border-gray-300 rounded cursor-crosshair"
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onMouseLeave={onMouseUp}
-            />
+            {/* Canvas Container */}
+            <div className="relative">
+                <canvas
+                    ref={canvasRef}
+                    width={800}
+                    height={600}
+                    className="border border-gray-300 rounded-lg shadow-sm bg-white cursor-crosshair"
+                    onMouseDown={onMouseDown}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={onMouseUp}
+                    onMouseLeave={onMouseUp}
+                />
 
-            {selectedShapeIndex !== null && (
-                <div className="mt-4 p-2 bg-gray-100 rounded">
-                    <p className="text-sm">Selected: {shapes[selectedShapeIndex]?.type}</p>
+                {/* Status Bar */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gray-100 bg-opacity-90 p-2 text-sm font-mono text-gray-700 rounded-b-lg">
+                    {selectedShapeIndex !== null ? (
+                        <span className="font-medium">
+                            Selected: {shapes[selectedShapeIndex]?.type}
+                            {shapes[selectedShapeIndex]?.type !== "line" &&
+                                ` (${shapes[selectedShapeIndex]?.fill ? 'Filled' : 'Outline'})`
+                            }
+                        </span>
+                    ) : activeShapeType ? (
+                        <span className="font-medium">
+                            Drawing: {activeShapeType}
+                            {activeShapeType !== "line" && ` (${fillShape ? 'Filled' : 'Outline'})`}
+                            - Click and drag to draw
+                        </span>
+                    ) : (
+                        <span>Select a shape to edit or choose a drawing tool</span>
+                    )}
                 </div>
-            )}
-
-            {activeShapeType && (
-                <div className="mt-4 p-2 bg-blue-100 rounded">
-                    <p className="text-sm">Drawing: {activeShapeType} (click and drag to draw)</p>
-                </div>
-            )}
+            </div>
         </div>
     );
 };
