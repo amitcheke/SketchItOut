@@ -683,153 +683,233 @@ const Canvas = () => {
     };
 
     return (
-        <div className="p-6 bg-white rounded-lg shadow-lg max-w-6xl mx-auto">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Vector Drawing Tool</h2>
+        <div className="flex h-screen bg-gray-50">
+            {/* Primary Sidebar - Main Categories */}
+            <div className="w-20 bg-gray-100 shadow-sm flex flex-col items-center pt-3">
+                <div className="flex flex-col items-center space-y-6">
+                    {/* Main Category Buttons */}
+                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
+                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
+                        <span className="text-xs text-gray-700">Design</span>
+                    </div>
 
-            {/* Toolbar */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg shadow-sm">
-                <div className="flex flex-wrap gap-2 mb-4">
-                    <button
-                        className={getButtonStyle(activeShapeType === "rectangle")}
-                        onClick={() => activateShapeMode("rectangle")}
-                        title="Rectangle Tool"
-                    >
-                        Rectangle
-                    </button>
-                    <button
-                        className={getButtonStyle(activeShapeType === "square")}
-                        onClick={() => activateShapeMode("square")}
-                        title="Square Tool"
-                    >
-                        Square
-                    </button>
-                    <button
-                        className={getButtonStyle(activeShapeType === "circle")}
-                        onClick={() => activateShapeMode("circle")}
-                        title="Circle Tool"
-                    >
-                        Circle
-                    </button>
-                    <button
-                        className={getButtonStyle(activeShapeType === "oval")}
-                        onClick={() => activateShapeMode("oval")}
-                        title="Oval Tool"
-                    >
-                        Oval
-                    </button>
-                    <button
-                        className={getButtonStyle(activeShapeType === "line")}
-                        onClick={() => activateShapeMode("line")}
-                        title="Line Tool"
-                    >
-                        Line
-                    </button>
+                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
+                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
+                        <span className="text-xs text-gray-700">Elements</span>
+                    </div>
 
-                    <div className="h-8 w-px bg-gray-300 mx-1"></div>
+                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
+                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
+                        <span className="text-xs text-gray-700">Text</span>
+                    </div>
 
-                    <button
-                        className={`px-3 py-2 ${fillShape ? 'bg-green-600' : 'bg-gray-500'} text-white rounded-md shadow hover:opacity-90 transition-opacity`}
-                        onClick={toggleFillMode}
-                        title={fillShape ? "Switch to Outline Mode" : "Switch to Fill Mode"}
-                    >
-                        {fillShape ? "Filled" : "Outline"}
-                    </button>
+                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
+                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
+                        <span className="text-xs text-gray-700">Uploads</span>
+                    </div>
 
-                    <select
-                        className="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={lineWidth}
-                        onChange={(e) => updateLineWidth(parseInt(e.target.value))}
-                        title="Line Thickness"
-                    >
-                        <option value="1">Thin</option>
-                        <option value="2">Medium</option>
-                        <option value="4">Thick</option>
-                        <option value="6">Very Thick</option>
-                    </select>
+                    <div className="flex flex-col items-center py-3 px-2 w-full bg-blue-100 rounded cursor-pointer transition hover:bg-blue-200">
+                        <div className="h-6 w-6 mb-1 bg-blue-500 rounded"></div>
+                        <span className="text-xs text-blue-700 font-medium">Draw</span>
+                    </div>
 
-                    <div className="h-8 w-px bg-gray-300 mx-1"></div>
-
-                    <button
-                        className="px-3 py-2 bg-red-500 text-white rounded-md shadow hover:bg-red-600 transition-colors"
-                        onClick={deleteSelectedShape}
-                        disabled={selectedShapeIndex === null}
-                        title="Delete Selected Shape"
-                    >
-                        Delete
-                    </button>
-                    <button
-                        className="px-3 py-2 bg-gray-600 text-white rounded-md shadow hover:bg-gray-700 transition-colors"
-                        onClick={bringToFront}
-                        disabled={selectedShapeIndex === null}
-                        title="Bring to Front"
-                    >
-                        Bring to Front
-                    </button>
-                    <button
-                        className="px-3 py-2 bg-gray-600 text-white rounded-md shadow hover:bg-gray-700 transition-colors"
-                        onClick={sendToBack}
-                        disabled={selectedShapeIndex === null}
-                        title="Send to Back"
-                    >
-                        Send to Back
-                    </button>
-                    <button
-                        className="px-3 py-2 bg-gray-800 text-white rounded-md shadow hover:bg-gray-900 transition-colors ml-auto"
-                        onClick={clearCanvas}
-                        title="Clear Canvas"
-                    >
-                        Clear All
-                    </button>
-                </div>
-
-                {/* Color Palette */}
-                <div className="mt-4">
-                    <p className="text-sm text-gray-700 mb-2 font-medium">Colors:</p>
-                    <div className="flex gap-3">
-                        {colors.map((color) => (
-                            <div
-                                key={color}
-                                className={`w-8 h-8 rounded-full cursor-pointer transition-transform hover:scale-110 ${color === currentColor ? 'ring-2 ring-offset-2 ring-gray-500' : ''}`}
-                                style={{ backgroundColor: color }}
-                                onClick={() => changeShapeColor(color)}
-                                title={color}
-                            />
-                        ))}
+                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
+                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
+                        <span className="text-xs text-gray-700">Apps</span>
                     </div>
                 </div>
             </div>
 
-            {/* Canvas Container */}
-            <div className="relative">
-                <canvas
-                    ref={canvasRef}
-                    width={800}
-                    height={600}
-                    className="border border-gray-300 rounded-lg shadow-sm bg-white cursor-crosshair"
-                    onMouseDown={onMouseDown}
-                    onMouseMove={onMouseMove}
-                    onMouseUp={onMouseUp}
-                    onMouseLeave={onMouseUp}
-                />
+            {/* Secondary Sidebar - Tools Panel */}
+            <div className="w-64 bg-white shadow-sm flex flex-col border-r">
+                <div className="p-4 border-b">
+                    <h2 className="text-lg font-medium text-gray-800">Drawing Tools</h2>
+                </div>
+
+                {/* Drawing Shapes Section */}
+                <div className="p-4 border-b">
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Shapes</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                        {["Rectangle", "Square", "Circle", "Oval", "Line"].map((type) => (
+                            <button
+                                key={type.toLowerCase()}
+                                className={`px-3 py-2 rounded font-medium text-sm transition-all ${
+                                    activeShapeType === type.toLowerCase()
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                                onClick={() => activateShapeMode(type.toLowerCase())}
+                            >
+                                {type}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Style Controls Section */}
+                <div className="p-4 border-b">
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Style</h3>
+
+                    {/* Fill Toggle */}
+                    <div className="mb-4">
+                        <span className="text-xs text-gray-500 block mb-2">Fill Mode</span>
+                        <div className="flex gap-2">
+                            <button
+                                className={`flex-1 px-3 py-1.5 rounded text-sm ${
+                                    fillShape
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                                onClick={toggleFillMode}
+                            >
+                                Filled
+                            </button>
+                            <button
+                                className={`flex-1 px-3 py-1.5 rounded text-sm ${
+                                    !fillShape
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                                onClick={toggleFillMode}
+                            >
+                                Outline
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Line Width */}
+                    <div className="mb-4">
+                        <span className="text-xs text-gray-500 block mb-2">Line Thickness</span>
+                        <select
+                            className="w-full py-1.5 px-3 bg-gray-100 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            value={lineWidth}
+                            onChange={(e) => updateLineWidth(parseInt(e.target.value))}
+                        >
+                            <option value="1">Thin</option>
+                            <option value="2">Medium</option>
+                            <option value="4">Thick</option>
+                            <option value="6">Very Thick</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Colors Section */}
+                <div className="p-4 border-b">
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Colors</h3>
+                    <div className="grid grid-cols-5 gap-2">
+                        {colors.map((color) => (
+                            <button
+                                key={color}
+                                className={`w-8 h-8 rounded-full transition-all ${
+                                    color === currentColor ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+                                }`}
+                                style={{ backgroundColor: color }}
+                                onClick={() => changeShapeColor(color)}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Shape Operations Section */}
+                <div className="p-4">
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Arrange</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            className={`px-3 py-2 rounded text-sm font-medium ${
+                                selectedShapeIndex === null
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-700 text-white hover:bg-gray-800"
+                            }`}
+                            onClick={bringToFront}
+                            disabled={selectedShapeIndex === null}
+                        >
+                            Bring Forward
+                        </button>
+                        <button
+                            className={`px-3 py-2 rounded text-sm font-medium ${
+                                selectedShapeIndex === null
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-700 text-white hover:bg-gray-800"
+                            }`}
+                            onClick={sendToBack}
+                            disabled={selectedShapeIndex === null}
+                        >
+                            Send Back
+                        </button>
+                        <button
+                            className={`col-span-2 px-3 py-2 rounded text-sm font-medium ${
+                                selectedShapeIndex === null
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-red-500 text-white hover:bg-red-600"
+                            }`}
+                            onClick={deleteSelectedShape}
+                            disabled={selectedShapeIndex === null}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                {/* Canvas Control - at bottom */}
+                <div className="p-4 mt-auto border-t">
+                    <button
+                        className="w-full py-2 bg-gray-800 text-white rounded text-sm hover:bg-gray-900 transition-colors"
+                        onClick={clearCanvas}
+                    >
+                        Clear Canvas
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Canvas Area */}
+            <div className="flex-1 flex flex-col">
+                {/* Top Header/Toolbar */}
+                <div className="h-12 bg-white border-b flex items-center px-4">
+                    <h1 className="text-lg font-semibold text-gray-800">Untitled Design</h1>
+                    <div className="ml-auto flex gap-2">
+                        <button className="px-4 py-1.5 rounded bg-gray-100 text-sm text-gray-700 hover:bg-gray-200">
+                            Download
+                        </button>
+                        <button className="px-4 py-1.5 rounded bg-blue-600 text-sm text-white hover:bg-blue-700">
+                            Share
+                        </button>
+                    </div>
+                </div>
+
+                {/* Canvas */}
+                <div className="flex-1 p-6 bg-gray-100 flex items-center justify-center">
+                    <div className="bg-white rounded-lg shadow-md">
+                        <canvas
+                            ref={canvasRef}
+                            width={800}
+                            height={600}
+                            className="border border-gray-200 rounded bg-white cursor-crosshair"
+                            onMouseDown={onMouseDown}
+                            onMouseMove={onMouseMove}
+                            onMouseUp={onMouseUp}
+                            onMouseLeave={onMouseUp}
+                        />
+                    </div>
+                </div>
 
                 {/* Status Bar */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gray-100 bg-opacity-90 p-2 text-sm font-mono text-gray-700 rounded-b-lg">
+                <div className="h-8 bg-white border-t px-4 flex items-center text-sm text-gray-700">
                     {selectedShapeIndex !== null ? (
-                        <span className="font-medium">
-                            Selected: {shapes[selectedShapeIndex]?.type}
+                        <span>
+            Selected: <span className="font-medium">{shapes[selectedShapeIndex]?.type}</span>
                             {shapes[selectedShapeIndex]?.type !== "line" &&
-                                ` (${shapes[selectedShapeIndex]?.fill ? 'Filled' : 'Outline'})`
+                                <span> ({shapes[selectedShapeIndex]?.fill ? 'Filled' : 'Outline'})</span>
                             }
-                        </span>
+          </span>
                     ) : activeShapeType ? (
-                        <span className="font-medium">
-                            Drawing: {activeShapeType}
-                            {activeShapeType !== "line" && ` (${fillShape ? 'Filled' : 'Outline'})`}
-                            - Click and drag to draw
-                        </span>
+                        <span>
+            Drawing: <span className="font-medium">{activeShapeType}</span>
+                            {activeShapeType !== "line" && <span> ({fillShape ? 'Filled' : 'Outline'})</span>}
+          </span>
                     ) : (
-                        <span>Select a shape to edit or choose a drawing tool</span>
+                        <span>Select a tool to begin drawing</span>
                     )}
+                    <span className="ml-auto">800 × 600</span>
                 </div>
             </div>
         </div>
