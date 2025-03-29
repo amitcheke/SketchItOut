@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react";
+import styles from './page.module.css';
 
 const Canvas = () => {
     const canvasRef = useRef(null);
@@ -15,6 +16,16 @@ const Canvas = () => {
     const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
     const [fillShape, setFillShape] = useState(true); // New state for fill/outline option
     const [lineWidth, setLineWidth] = useState(2); // Line width state
+    // New states for undo/redo
+    const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+    // New states for text tool
+    const [textInput, setTextInput] = useState("");
+    const [isTextMode, setIsTextMode] = useState(false);
+    const [textPosition, setTextPosition] = useState(null);
+    // New state for eraser
+    const [isEraser, setIsEraser] = useState(false);
+    const [eraserSize, setEraserSize] = useState(20);
 
     // Available colors
     const colors = [
@@ -25,6 +36,144 @@ const Canvas = () => {
         "#8b5cf6", // purple
         "#000000"  // black
     ];
+
+    // Save state to history
+    const saveToHistory = (newShapes) => {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(JSON.stringify(newShapes));
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    };
+
+    // Undo function
+    const undo = () => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setShapes(JSON.parse(history[newIndex]));
+        }
+    };
+
+    // Redo function
+    const redo = () => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setShapes(JSON.parse(history[newIndex]));
+        }
+    };
+
+    // Save canvas to file
+    const saveCanvas = () => {
+        const canvas = canvasRef.current;
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'canvas-drawing.png';
+        link.href = dataURL;
+        link.click();
+    };
+
+    // Load canvas from file
+    const loadCanvas = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = canvasRef.current;
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // Add text to canvas
+    const addText = (x, y) => {
+        if (textInput.trim()) {
+            const newText = {
+                type: "text",
+                text: textInput,
+                x: x,
+                y: y,
+                color: currentColor,
+                fontSize: lineWidth * 10
+            };
+            setShapes([...shapes, newText]);
+            setTextInput("");
+            setIsTextMode(false);
+            saveToHistory([...shapes, newText]);
+        }
+    };
+
+    // Eraser function
+    const erase = (ctx, x, y) => {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(x, y, eraserSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    };
+
+    // Touch event handlers
+    const getTouchPos = (canvas, touchEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: touchEvent.touches[0].clientX - rect.left,
+            y: touchEvent.touches[0].clientY - rect.top
+        };
+    };
+
+    const handleTouchStart = (e) => {
+        e.preventDefault();
+        const touch = getTouchPos(canvasRef.current, e);
+        onMouseDown({ clientX: touch.x, clientY: touch.y });
+    };
+
+    const handleTouchMove = (e) => {
+        e.preventDefault();
+        const touch = getTouchPos(canvasRef.current, e);
+        onMouseMove({ clientX: touch.x, clientY: touch.y });
+    };
+
+    const handleTouchEnd = (e) => {
+        e.preventDefault();
+        onMouseUp(e);
+    };
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 'z':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        saveCanvas();
+                        break;
+                }
+            } else if (e.key === 'Escape') {
+                setActiveShapeType(null);
+                setIsTextMode(false);
+                setSelectedShapeIndex(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [historyIndex, history]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -197,6 +346,12 @@ const Canvas = () => {
         const offsetX = e.clientX - rect.left;
         const offsetY = e.clientY - rect.top;
 
+        if (isEraser) {
+            const ctx = canvasRef.current.getContext('2d');
+            erase(ctx, offsetX, offsetY);
+            return;
+        }
+
         // If we're in shape creation mode
         if (activeShapeType) {
             setStartPoint({ x: offsetX, y: offsetY });
@@ -336,6 +491,15 @@ const Canvas = () => {
     };
 
     const onMouseMove = (e) => {
+        if (isEraser && e.buttons === 1) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            const offsetX = e.clientX - rect.left;
+            const offsetY = e.clientY - rect.top;
+            const ctx = canvasRef.current.getContext('2d');
+            erase(ctx, offsetX, offsetY);
+            return;
+        }
+
         const rect = canvasRef.current.getBoundingClientRect();
         const offsetX = e.clientX - rect.left;
         const offsetY = e.clientY - rect.top;
@@ -683,60 +847,50 @@ const Canvas = () => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50">
-            {/* Primary Sidebar - Main Categories */}
-            <div className="w-20 bg-gray-100 shadow-sm flex flex-col items-center pt-3">
-                <div className="flex flex-col items-center space-y-6">
-                    {/* Main Category Buttons */}
-                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
-                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
-                        <span className="text-xs text-gray-700">Design</span>
-                    </div>
-
-                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
-                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
-                        <span className="text-xs text-gray-700">Elements</span>
-                    </div>
-
-                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
-                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
-                        <span className="text-xs text-gray-700">Text</span>
-                    </div>
-
-                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
-                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
-                        <span className="text-xs text-gray-700">Uploads</span>
-                    </div>
-
-                    <div className="flex flex-col items-center py-3 px-2 w-full bg-blue-100 rounded cursor-pointer transition hover:bg-blue-200">
-                        <div className="h-6 w-6 mb-1 bg-blue-500 rounded"></div>
-                        <span className="text-xs text-blue-700 font-medium">Draw</span>
-                    </div>
-
-                    <div className="flex flex-col items-center py-3 px-2 w-full rounded cursor-pointer transition hover:bg-gray-200">
-                        <div className="h-6 w-6 mb-1 bg-gray-500 rounded"></div>
-                        <span className="text-xs text-gray-700">Apps</span>
-                    </div>
+        <div className={styles.container}>
+            {/* Primary Sidebar */}
+            <div className={styles.primarySidebar}>
+                <div className={styles.categoryButton}>
+                    <div className={styles.categoryIcon}></div>
+                    <span className={styles.categoryLabel}>Design</span>
+                </div>
+                <div className={styles.categoryButton}>
+                    <div className={styles.categoryIcon}></div>
+                    <span className={styles.categoryLabel}>Elements</span>
+                </div>
+                <div className={styles.categoryButton}>
+                    <div className={styles.categoryIcon}></div>
+                    <span className={styles.categoryLabel}>Text</span>
+                </div>
+                <div className={styles.categoryButton}>
+                    <div className={styles.categoryIcon}></div>
+                    <span className={styles.categoryLabel}>Uploads</span>
+                </div>
+                <div className={`${styles.categoryButton} ${styles.active}`}>
+                    <div className={styles.categoryIcon}></div>
+                    <span className={styles.categoryLabel}>Draw</span>
+                </div>
+                <div className={styles.categoryButton}>
+                    <div className={styles.categoryIcon}></div>
+                    <span className={styles.categoryLabel}>Apps</span>
                 </div>
             </div>
 
-            {/* Secondary Sidebar - Tools Panel */}
-            <div className="w-64 bg-white shadow-sm flex flex-col border-r">
-                <div className="p-4 border-b">
-                    <h2 className="text-lg font-medium text-gray-800">Drawing Tools</h2>
+            {/* Secondary Sidebar */}
+            <div className={styles.secondarySidebar}>
+                <div className={styles.sidebarHeader}>
+                    <h2 className={styles.sidebarTitle}>Drawing Tools</h2>
                 </div>
 
-                {/* Drawing Shapes Section */}
-                <div className="p-4 border-b">
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Shapes</h3>
-                    <div className="grid grid-cols-2 gap-2">
+                {/* Shapes Section */}
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>Shapes</h3>
+                    <div className={styles.toolsGrid}>
                         {["Rectangle", "Square", "Circle", "Oval", "Line"].map((type) => (
                             <button
                                 key={type.toLowerCase()}
-                                className={`px-3 py-2 rounded font-medium text-sm transition-all ${
-                                    activeShapeType === type.toLowerCase()
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                className={`${styles.toolButton} ${
+                                    activeShapeType === type.toLowerCase() ? styles.active : ''
                                 }`}
                                 onClick={() => activateShapeMode(type.toLowerCase())}
                             >
@@ -746,42 +900,27 @@ const Canvas = () => {
                     </div>
                 </div>
 
-                {/* Style Controls Section */}
-                <div className="p-4 border-b">
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Style</h3>
-
-                    {/* Fill Toggle */}
-                    <div className="mb-4">
-                        <span className="text-xs text-gray-500 block mb-2">Fill Mode</span>
-                        <div className="flex gap-2">
-                            <button
-                                className={`flex-1 px-3 py-1.5 rounded text-sm ${
-                                    fillShape
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                }`}
-                                onClick={toggleFillMode}
-                            >
-                                Filled
-                            </button>
-                            <button
-                                className={`flex-1 px-3 py-1.5 rounded text-sm ${
-                                    !fillShape
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                }`}
-                                onClick={toggleFillMode}
-                            >
-                                Outline
-                            </button>
-                        </div>
+                {/* Style Controls */}
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>Style</h3>
+                    <div className={styles.toolsGrid}>
+                        <button
+                            className={`${styles.toolButton} ${fillShape ? styles.active : ''}`}
+                            onClick={toggleFillMode}
+                        >
+                            Filled
+                        </button>
+                        <button
+                            className={`${styles.toolButton} ${!fillShape ? styles.active : ''}`}
+                            onClick={toggleFillMode}
+                        >
+                            Outline
+                        </button>
                     </div>
-
-                    {/* Line Width */}
-                    <div className="mb-4">
-                        <span className="text-xs text-gray-500 block mb-2">Line Thickness</span>
+                    <div className="mt-4">
+                        <span className={styles.sectionTitle}>Line Thickness</span>
                         <select
-                            className="w-full py-1.5 px-3 bg-gray-100 border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className={styles.input}
                             value={lineWidth}
                             onChange={(e) => updateLineWidth(parseInt(e.target.value))}
                         >
@@ -794,14 +933,14 @@ const Canvas = () => {
                 </div>
 
                 {/* Colors Section */}
-                <div className="p-4 border-b">
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Colors</h3>
-                    <div className="grid grid-cols-5 gap-2">
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>Colors</h3>
+                    <div className={styles.colorPicker}>
                         {colors.map((color) => (
                             <button
                                 key={color}
-                                className={`w-8 h-8 rounded-full transition-all ${
-                                    color === currentColor ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+                                className={`${styles.colorButton} ${
+                                    color === currentColor ? styles.active : ''
                                 }`}
                                 style={{ backgroundColor: color }}
                                 onClick={() => changeShapeColor(color)}
@@ -810,50 +949,94 @@ const Canvas = () => {
                     </div>
                 </div>
 
-                {/* Shape Operations Section */}
-                <div className="p-4">
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Arrange</h3>
-                    <div className="grid grid-cols-2 gap-2">
+                {/* History Section */}
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>History</h3>
+                    <div className={styles.toolsGrid}>
                         <button
-                            className={`px-3 py-2 rounded text-sm font-medium ${
-                                selectedShapeIndex === null
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-gray-700 text-white hover:bg-gray-800"
-                            }`}
-                            onClick={bringToFront}
-                            disabled={selectedShapeIndex === null}
+                            className={`${styles.toolButton} ${historyIndex <= 0 ? styles.disabled : ''}`}
+                            onClick={undo}
+                            disabled={historyIndex <= 0}
                         >
-                            Bring Forward
+                            Undo
                         </button>
                         <button
-                            className={`px-3 py-2 rounded text-sm font-medium ${
-                                selectedShapeIndex === null
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-gray-700 text-white hover:bg-gray-800"
-                            }`}
-                            onClick={sendToBack}
-                            disabled={selectedShapeIndex === null}
+                            className={`${styles.toolButton} ${historyIndex >= history.length - 1 ? styles.disabled : ''}`}
+                            onClick={redo}
+                            disabled={historyIndex >= history.length - 1}
                         >
-                            Send Back
-                        </button>
-                        <button
-                            className={`col-span-2 px-3 py-2 rounded text-sm font-medium ${
-                                selectedShapeIndex === null
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-red-500 text-white hover:bg-red-600"
-                            }`}
-                            onClick={deleteSelectedShape}
-                            disabled={selectedShapeIndex === null}
-                        >
-                            Delete
+                            Redo
                         </button>
                     </div>
                 </div>
 
-                {/* Canvas Control - at bottom */}
-                <div className="p-4 mt-auto border-t">
+                {/* Text Tool Section */}
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>Text Tool</h3>
                     <button
-                        className="w-full py-2 bg-gray-800 text-white rounded text-sm hover:bg-gray-900 transition-colors"
+                        className={`${styles.toolButton} ${isTextMode ? styles.active : ''}`}
+                        onClick={() => setIsTextMode(!isTextMode)}
+                    >
+                        {isTextMode ? "Cancel Text" : "Add Text"}
+                    </button>
+                    {isTextMode && (
+                        <input
+                            type="text"
+                            className={styles.input}
+                            placeholder="Enter text..."
+                            value={textInput}
+                            onChange={(e) => setTextInput(e.target.value)}
+                        />
+                    )}
+                </div>
+
+                {/* Eraser Tool Section */}
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>Eraser</h3>
+                    <button
+                        className={`${styles.toolButton} ${isEraser ? styles.active : ''}`}
+                        onClick={() => setIsEraser(!isEraser)}
+                    >
+                        {isEraser ? "Disable Eraser" : "Enable Eraser"}
+                    </button>
+                    {isEraser && (
+                        <div className="mt-4">
+                            <span className={styles.sectionTitle}>Eraser Size</span>
+                            <input
+                                type="range"
+                                min="5"
+                                max="50"
+                                value={eraserSize}
+                                onChange={(e) => setEraserSize(parseInt(e.target.value))}
+                                className={styles.rangeInput}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {/* File Operations */}
+                <div className={styles.sidebarSection}>
+                    <h3 className={styles.sectionTitle}>File</h3>
+                    <button className={`${styles.fileButton} ${styles.saveButton}`} onClick={saveCanvas}>
+                        Save Canvas
+                    </button>
+                    <label className="block mt-2">
+                        <span className={`${styles.fileButton} ${styles.loadButton}`}>
+                            Load Canvas
+                        </span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={loadCanvas}
+                            className="hidden"
+                        />
+                    </label>
+                </div>
+
+                {/* Clear Canvas */}
+                <div className={styles.sidebarSection}>
+                    <button
+                        className={`${styles.toolButton} ${styles.clearButton}`}
                         onClick={clearCanvas}
                     >
                         Clear Canvas
@@ -862,54 +1045,62 @@ const Canvas = () => {
             </div>
 
             {/* Main Canvas Area */}
-            <div className="flex-1 flex flex-col">
-                {/* Top Header/Toolbar */}
-                <div className="h-12 bg-white border-b flex items-center px-4">
-                    <h1 className="text-lg font-semibold text-gray-800">Untitled Design</h1>
-                    <div className="ml-auto flex gap-2">
-                        <button className="px-4 py-1.5 rounded bg-gray-100 text-sm text-gray-700 hover:bg-gray-200">
-                            Download
-                        </button>
-                        <button className="px-4 py-1.5 rounded bg-blue-600 text-sm text-white hover:bg-blue-700">
-                            Share
-                        </button>
+            <div className={styles.mainArea}>
+                <div className={styles.canvasHeader}>
+                    <h1 className={styles.canvasTitle}>Untitled Design</h1>
+                    <div className={styles.canvasActions}>
+                        <button className={styles.toolButton}>Download</button>
+                        <button className={`${styles.toolButton} ${styles.active}`}>Share</button>
                     </div>
                 </div>
 
-                {/* Canvas */}
-                <div className="flex-1 p-6 bg-gray-100 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-md">
+                <div className={styles.canvasContainer}>
+                    <div className={styles.canvasWrapper}>
                         <canvas
                             ref={canvasRef}
                             width={800}
                             height={600}
-                            className="border border-gray-200 rounded bg-white cursor-crosshair"
+                            className={styles.canvas}
                             onMouseDown={onMouseDown}
                             onMouseMove={onMouseMove}
                             onMouseUp={onMouseUp}
                             onMouseLeave={onMouseUp}
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onClick={(e) => {
+                                if (isTextMode) {
+                                    const rect = canvasRef.current.getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const y = e.clientY - rect.top;
+                                    addText(x, y);
+                                }
+                            }}
                         />
                     </div>
                 </div>
 
-                {/* Status Bar */}
-                <div className="h-8 bg-white border-t px-4 flex items-center text-sm text-gray-700">
+                <div className={styles.statusBar}>
                     {selectedShapeIndex !== null ? (
                         <span>
-            Selected: <span className="font-medium">{shapes[selectedShapeIndex]?.type}</span>
+                            Selected: <span className="font-medium">{shapes[selectedShapeIndex]?.type}</span>
                             {shapes[selectedShapeIndex]?.type !== "line" &&
                                 <span> ({shapes[selectedShapeIndex]?.fill ? 'Filled' : 'Outline'})</span>
                             }
-          </span>
+                        </span>
                     ) : activeShapeType ? (
                         <span>
-            Drawing: <span className="font-medium">{activeShapeType}</span>
+                            Drawing: <span className="font-medium">{activeShapeType}</span>
                             {activeShapeType !== "line" && <span> ({fillShape ? 'Filled' : 'Outline'})</span>}
-          </span>
+                        </span>
+                    ) : isTextMode ? (
+                        <span>Click anywhere to add text</span>
+                    ) : isEraser ? (
+                        <span>Eraser Mode</span>
                     ) : (
                         <span>Select a tool to begin drawing</span>
                     )}
-                    <span className="ml-auto">800 × 600</span>
+                    <span>800 × 600</span>
                 </div>
             </div>
         </div>
